@@ -10,14 +10,19 @@ class ForbiddenError extends Error {
   status = 403
 }
 
-const SECRET = JSON.parse(readFileSync(__dirname + "/../../config.json").toString()).jwtSecret
+const CONFIG = JSON.parse(readFileSync(__dirname + "/../../config.json").toString())
+const MASTER_USER = CONFIG.masterUser
+const SECRET = CONFIG.jwtSecret
+
 export const JWT = expressJwt({ secret: SECRET })
 
 export function PERM(...needs: string[]) {
   return (req: express.Request, _1: express.Response, next: express.NextFunction) => {
-    for (const permission of needs) {
-      if (!req.user.permissions.includes(permission)) {
-        next(new ForbiddenError(`user needs following tags: ${needs.join(", ")}`))
+    if (!req.user.isMaster) {
+      for (const permission of needs) {
+        if (!req.user.permissions.includes(permission)) {
+          next(new ForbiddenError(`user needs following tags: ${needs.join(", ")}`))
+        }
       }
     }
 
@@ -26,7 +31,7 @@ export function PERM(...needs: string[]) {
 }
 
 interface AuthData {
-  name: string
+  username: string
   password: string
 }
 
@@ -37,17 +42,25 @@ export default function register(app: express.Application) {
 
     data.password = password
 
-    res.status(201).json(await new User(data).save()).end()
+    const user = await new User(data).save()
+
+    delete user.password
+
+    res.status(201).json(user).end()
   })
 
   app.post("/authenticate", async (req, res) => {
     const data = req.body as AuthData
-    const user = await User.findOne({ name: data.name }).populate("permissions").lean().exec()
+    const user = await User.findOne({ username: data.username }).populate("permissions").lean()
 
     if (user) {
       const isSame = await promisify(bcrypt.compare)(data.password, user.password)
       
       if (isSame) {
+        user.isMaster = (user.username === MASTER_USER)
+
+        delete user.password
+
         const token = await promisify(jwt.sign)(user, SECRET)
 
         res.json({ user, token }).end()

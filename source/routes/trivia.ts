@@ -27,7 +27,7 @@ export default function register(app: Application) {
       docQuery.sort({ createdAt: "desc" })
     }
 
-    const questions = await docQuery.lean().exec()
+    const questions = await docQuery.lean()
 
     if (shuffled) {
       shuffle(questions)
@@ -47,7 +47,7 @@ export default function register(app: Application) {
   })
 
   app.get("/trivia/questions/:id", async (req, res) => {
-    const question = await Question.findById(req.params.id).lean().exec()
+    const question = await Question.findById(req.params.id).lean()
 
     if (!question) {
       throw { status: 404 }
@@ -73,28 +73,30 @@ export default function register(app: Application) {
       question: mongoose.Types.ObjectId(req.params.id),
     }
 
-    res.send(await Report.find(conditions).sort({ createdAt: "desc" }).lean().exec())
+    res.send(await Report.find(conditions).sort({ createdAt: "desc" }).lean())
+  })
+
+  app.post("/trivia/questions/:id/reports", async (req, res) => {
+    Object.assign(req.body, { question: req.params.id })
+
+    res.status(201).json(await new Report(req.body).save()).end()
   })
 
   app.get("/trivia/categories", async (req, res) => {
-    res.send(await Question.distinct("category").exec())
+    res.send(await Question.distinct("category"))
   })
 
   app.get("/trivia/reports", JWT, PERM("trivia"), async (req, res) => {
     res.status(200).json(await Report.find(req.query)).end()
   })
 
-  app.post("/trivia/reports", async (req, res) => {
-    res.status(201).json(await new Report(req.body).save()).end()
-  })
-
   app.get("/trivia/reported-questions", JWT, PERM("trivia"), async (req, res) => {
-    res.send(Question.find().where("_id").in(await Report.distinct("question").exec()).lean().exec())
+    res.send(Question.find().where("_id").in(await Report.distinct("question")).lean())
   })
 
   app.get("/trivia/statistics", async (_0, res) => {
-    const questionCount = await Question.estimatedDocumentCount().exec()
-    const categoryCount = await Question.distinct("category").estimatedDocumentCount().exec()
+    const questionCount = await Question.estimatedDocumentCount()
+    const categoryCount = await Question.distinct("category").estimatedDocumentCount()
     const countOfQuestionsAddedThisMonth = await Question.aggregate([
       {
         $project: {
@@ -118,7 +120,7 @@ export default function register(app: Application) {
       // {
       //   $count: "questionsAddedThisWeek",
       // },
-    ]).exec()
+    ])
     const topCategories = await Question.aggregate([
       {
         $group: {
@@ -129,7 +131,7 @@ export default function register(app: Application) {
       {
         $limit: 3,
       },
-    ]).exec()
+    ])
     const topSubmitters = await Question.aggregate([
       {
         $group: {
@@ -145,7 +147,7 @@ export default function register(app: Application) {
       {
         $limit: 3,
       },
-    ]).exec()
+    ])
     const dailyQuestions = await Question.aggregate([
       {
         $match: {
@@ -162,7 +164,7 @@ export default function register(app: Application) {
           date: "asc",
         },
       },
-    ]).exec()
+    ])
 
     res.send({
       questionCount,

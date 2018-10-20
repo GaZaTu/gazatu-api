@@ -27,14 +27,8 @@ app.options('*', cors({
 registerTrivia(app)
 registerAuth(app)
 
-app.use((err: Error, _1: Request, res: Response, _3: NextFunction) => {
-  const errAsAny = err as any
-
-  if (errAsAny.status === undefined) {
-    res.status(400).json(errAsAny).end()
-  } else {
-    res.status(errAsAny.status).json({ message: err.message }).end()
-  }
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  res.status((err as any).status || 400).json(err).end()
 })
 
 const server = PRODUCTION ? spdy.createServer({
@@ -43,6 +37,4 @@ const server = PRODUCTION ? spdy.createServer({
   ca: [fs.readFileSync("/etc/letsencrypt/live/gazatu.win/fullchain.pem")],
 }, app) : app as any
 
-server.listen(PORT, HOST, () => {
-  console.log("ready")
-})
+server.listen(PORT, HOST, () => console.log("ready"))

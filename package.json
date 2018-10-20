@@ -4,8 +4,8 @@
   "description": "",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc",
-    "mongodb": "./bin/mongod --dbpath ./bin/data/db"
+    "tsc-watch": "tsc --watch",
+    "mongodb": "cd bin && mongod --dbpath data/db"
   },
   "keywords": [],
   "author": "",
