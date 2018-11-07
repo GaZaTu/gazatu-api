@@ -1,40 +1,54 @@
-import * as spdy from "spdy";
-import * as fs from "fs";
-import * as express from "express";
-import * as cors from "cors";
-import * as bodyparser from "body-parser";
-import { Request, Response, NextFunction } from "express";
-import "express-async-errors";
+import * as http from "http";
+import * as http2 from "http2"; // is basically https
+import * as Koa from "koa";
+import * as cors from "@koa/cors";
+import * as bodyparser from "koa-bodyparser";
+import * as jsonerror from "koa-json-error";
+import * as logger from "koa-logger";
 import * as mongoose from "mongoose";
+import { appConfig } from "./config";
 
-mongoose.connect("mongodb://localhost:27017/gazatu-api", { useNewUrlParser: true })
+const {
+  production,
+  host,
+  port,
+  httpsConfig,
+  mongodbUri,
+} = appConfig()
 
-import registerAuth from "./routes/auth";
-import registerTrivia from "./routes/trivia";
+mongoose.connect(mongodbUri, { useNewUrlParser: true })
 
-const PRODUCTION = (process.env.NODE_ENV === "production")
-const PORT = PRODUCTION ? 8080 : 8081
-const HOST = "0.0.0.0"
-const app = express()
+const app = new Koa()
 
 app.use(cors())
-app.use(bodyparser.json())
+app.use(bodyparser({
+  enableTypes: ["json"],
+}))
+app.use(jsonerror({
+  postFormat: (e, obj) => {
+    if (production) {
+      delete obj.stack
+    }
 
-app.options('*', cors({
-  allowedHeaders: ["Content-Type", "Authorization"],
+    return obj
+  },
 }))
 
-registerTrivia(app)
-registerAuth(app)
+if (!production) {
+  app.use(logger())
+}
 
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  res.status((err as any).status || 400).json(err).end()
-})
+import routers from "./routes";
 
-const server = PRODUCTION ? spdy.createServer({
-  key: fs.readFileSync("/etc/letsencrypt/live/gazatu.win/privkey.pem"),
-  cert: fs.readFileSync("/etc/letsencrypt/live/gazatu.win/cert.pem"),
-  ca: [fs.readFileSync("/etc/letsencrypt/live/gazatu.win/fullchain.pem")],
-}, app) : app as any
+for (const router of routers) {
+  app.use(router.routes())
+  app.use(router.allowedMethods())
+}
 
-server.listen(PORT, HOST, () => console.log("ready"))
+const handler = app.callback()
+
+if (production && httpsConfig) {
+  http2.createSecureServer(httpsConfig, handler).listen(port, host)
+} else {
+  http.createServer(handler).listen(port, host)
+}

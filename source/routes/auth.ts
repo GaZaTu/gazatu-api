@@ -1,36 +1,33 @@
-import * as jwt from "jsonwebtoken";
-import * as express from "express";
-import * as expressJwt from "express-jwt";
+import * as koa from "koa";
+import * as koajwt from "koa-jwt";
+import * as KoaRouter from "koa-router";
 import * as bcrypt from "bcryptjs";
+import * as jwt from "jsonwebtoken";
 import { promisify } from "util";
 import { User } from "../models/auth.model";
-import { readFileSync } from "fs";
+import { appConfig } from "../config";
 
-class ForbiddenError extends Error {
-  status = 403
-}
+export const JWT = koajwt({ secret: appConfig().jwtSecret })
 
-const CONFIG = JSON.parse(readFileSync(__dirname + "/../../config.json").toString())
-const MASTER_USER = CONFIG.masterUser
-const SECRET = CONFIG.jwtSecret
-
-export const JWT = expressJwt({ secret: SECRET })
-
-export function PERM(...needs: string[]) {
-  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (!req.user.isMaster) {
-      for (const permission of needs) {
-        if (!req.user.permissions.includes(permission)) {
-          next(new ForbiddenError(`user needs following tags: ${needs.join(", ")}`))
-
-          return false
-        }
+export function userHasPermissions(ctx: koa.Context, ...needs: string[]) {
+  if (!ctx.state.user.isMaster) {
+    for (const permission of needs) {
+      if (!ctx.state.user.permissions.includes(permission)) {
+        return false
       }
     }
+  }
 
-    next()
+  return true
+}
 
-    return true
+export function PERM(...needs: string[]): koa.Middleware {
+  return async (ctx, next) => {
+    if (!userHasPermissions(ctx, ...needs)) {
+      ctx.throw(403, `user needs following tags: ${needs.join(", ")}`)
+    }
+
+    await next()
   }
 }
 
@@ -39,94 +36,90 @@ interface AuthData {
   password: string
 }
 
-export default function register(app: express.Application) {
-  app.post("/register", async (req, res) => {
-    const data = req.body as AuthData
-    const password = await promisify(bcrypt.hash)(data.password, 10)
+const router = new KoaRouter()
+export default router
 
-    data.password = password
+router.post("/register", async ctx => {
+  const data = ctx.request.body as AuthData
+  const password = await promisify(bcrypt.hash)(data.password, 10)
 
-    const user = await new User(data).save()
+  data.password = password
 
-    delete user.password
+  const user = await new User(data).save()
 
-    res.status(201).json(user).end()
-  })
+  delete user.password
 
-  app.post("/authenticate", async (req, res) => {
-    const data = req.body as AuthData
-    const user = await User.findOne({ username: data.username }).populate("permissions").lean()
+  ctx.body = user
+  ctx.status = 201
+})
 
-    if (user) {
-      const isSame = await promisify(bcrypt.compare)(data.password, user.password)
-      
-      if (isSame) {
-        user.isMaster = (user.username === MASTER_USER)
+router.post("/authenticate", async ctx => {
+  const data = ctx.request.body as AuthData
+  const user = await User.findOne({ username: data.username }).populate("permissions").lean()
 
-        delete user.password
+  if (user) {
+    const isSame = await promisify(bcrypt.compare)(data.password, user.password)
 
-        const token = await promisify(jwt.sign)(user, SECRET)
+    if (isSame) {
+      user.isMaster = (user.username === appConfig().masterUser)
 
-        res.json({ user, token }).end()
+      delete user.password
 
-        return
-      }
+      const token = await promisify(jwt.sign)(user, appConfig().jwtSecret)
+
+      ctx.body = { user, token }
+
+      return
     }
+  }
 
-    res.status(400).json({ message: "invalid login" }).end()
-  })
+  ctx.throw(400, "invalid login")
+})
 
-  app.get("/users", JWT, PERM("users"), async (req, res) => {
-    res.send(await User.find(req.query).lean())
-  })
+router.get("/users", JWT, PERM("users"), async ctx => {
+  ctx.body = await User.find(ctx.query).lean()
+})
 
-  app.get("/users/:id", JWT, async (req, res, next) => {
-    const user = await User.findById(req.params.id).populate("permissions").lean()
+router.get("/users/:id", async ctx => {
+  const user = await User.findById(ctx.params.id).populate("permissions").lean()
 
-    if (!user || user._id !== req.user.userId) {
-      if (!PERM("users")(req, res, next)) {
-        return
-      }
+  if (!user || user._id !== ctx.state.user.userId) {
+    if (!userHasPermissions(ctx, "users")) {
+      return
     }
+  }
 
-    res.send(user)
-  })
+  ctx.body = user
+})
 
-  app.put("/users/:id", JWT, async (req, res, next) => {
-    const user = await User.findById(req.params.id)
+router.put("/users/:id", async ctx => {
+  const user = await User.findById(ctx.params.id)
 
-    if (!user || user._id !== req.user.userId) {
-      if (!PERM("users")(req, res, next)) {
-        return
-      }
+  if (!user || user._id !== ctx.state.user.userId) {
+    if (!userHasPermissions(ctx, "users")) {
+      return
     }
+  }
 
-    if (user) {
-      user.update(req.body)
+  if (user) {
+    user.update(ctx.request.body)
+  }
+})
+
+router.delete("/users/:id", async ctx => {
+  const user = await User.findById(ctx.params.id)
+
+  if (!user || user._id !== ctx.state.user.userId) {
+    if (!userHasPermissions(ctx, "users")) {
+      return
     }
+  }
 
-    res.status(204).end()
-  })
+  if (user) {
+    user.remove()
+  }
+})
 
-  app.delete("/users/:id", JWT, async (req, res, next) => {
-    const user = await User.findById(req.params.id)
-
-    if (!user || user._id !== req.user.userId) {
-      if (!PERM("users")(req, res, next)) {
-        return
-      }
-    }
-
-    if (user) {
-      user.remove()
-    }
-
-    res.status(204).end()
-  })
-
-  app.post("/import-users", async (req, res) => {
-    await User.create(req.body)
-
-    res.end()
-  })
-}
+router.delete("/import-users", async ctx => {
+  await User.create(ctx.request.body)
+})
