@@ -17,16 +17,20 @@ const SECRET = CONFIG.jwtSecret
 export const JWT = expressJwt({ secret: SECRET })
 
 export function PERM(...needs: string[]) {
-  return (req: express.Request, _1: express.Response, next: express.NextFunction) => {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!req.user.isMaster) {
       for (const permission of needs) {
         if (!req.user.permissions.includes(permission)) {
           next(new ForbiddenError(`user needs following tags: ${needs.join(", ")}`))
+
+          return false
         }
       }
     }
 
     next()
+
+    return true
   }
 }
 
@@ -70,6 +74,54 @@ export default function register(app: express.Application) {
     }
 
     res.status(400).json({ message: "invalid login" }).end()
+  })
+
+  app.get("/users", JWT, PERM("users"), async (req, res) => {
+    res.send(await User.find(req.query).lean())
+  })
+
+  app.get("/users/:id", JWT, async (req, res, next) => {
+    const user = await User.findById(req.params.id).populate("permissions").lean()
+
+    if (!user || user._id !== req.user.userId) {
+      if (!PERM("users")(req, res, next)) {
+        return
+      }
+    }
+
+    res.send(user)
+  })
+
+  app.put("/users/:id", JWT, async (req, res, next) => {
+    const user = await User.findById(req.params.id)
+
+    if (!user || user._id !== req.user.userId) {
+      if (!PERM("users")(req, res, next)) {
+        return
+      }
+    }
+
+    if (user) {
+      user.update(req.body)
+    }
+
+    res.status(204).end()
+  })
+
+  app.delete("/users/:id", JWT, async (req, res, next) => {
+    const user = await User.findById(req.params.id)
+
+    if (!user || user._id !== req.user.userId) {
+      if (!PERM("users")(req, res, next)) {
+        return
+      }
+    }
+
+    if (user) {
+      user.remove()
+    }
+
+    res.status(204).end()
   })
 
   app.post("/import-users", async (req, res) => {

@@ -57,13 +57,25 @@ export default function register(app: Application) {
   })
 
   app.put("/trivia/questions/:id", JWT, PERM("trivia"), async (req, res) => {
-    await Question.findByIdAndUpdate(req.params.id, req.body)
+    const question = await Question.findById(req.params.id)
+
+    if (!question) {
+      throw { status: 404 }
+    }
+
+    if (req.body.verified && !question.verified) {
+      await Report.deleteMany({ question: mongoose.Types.ObjectId(req.params.id) })
+    }
+
+    await question.update(req.body)
 
     res.status(204).end()
   })
 
   app.delete("/trivia/questions/:id", JWT, PERM("trivia"), async (req, res) => {
-    await Question.findByIdAndDelete(req.params.id)
+    await Question.deleteOne({ _id: req.params.id })
+
+    await Report.deleteMany({ question: mongoose.Types.ObjectId(req.params.id) })
 
     res.status(204).end()
   })
@@ -77,6 +89,12 @@ export default function register(app: Application) {
   })
 
   app.post("/trivia/questions/:id/reports", async (req, res) => {
+    const question = await Question.findById(req.params.id)
+
+    if (!question || question.verified) {
+      throw { status: 400 }
+    }
+
     Object.assign(req.body, { question: req.params.id })
 
     res.status(201).json(await new Report(req.body).save()).end()

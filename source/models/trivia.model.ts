@@ -1,4 +1,4 @@
-import { Typegoose, prop, Ref, arrayProp } from "typegoose";
+import { Typegoose, prop, Ref } from "typegoose";
 import { UserSchema } from "./auth.model";
 
 class QuestionSchema extends Typegoose {

@@ -7,7 +7,7 @@ import { Request, Response, NextFunction } from "express";
 import "express-async-errors";
 import * as mongoose from "mongoose";
 
-mongoose.connect("mongodb://localhost:27017/gazatu-api")
+mongoose.connect("mongodb://localhost:27017/gazatu-api", { useNewUrlParser: true })
 
 import registerAuth from "./routes/auth";
 import registerTrivia from "./routes/trivia";
