@@ -51,6 +51,8 @@ for (const router of routers) {
 const handler = app.callback()
 
 if (production && httpsConfig) {
+  Object.assign(httpsConfig, { allowHTTP1: true })
+
   http2.createSecureServer(httpsConfig, handler).listen(port, host)
 } else {
   http.createServer(handler).listen(port, host)
