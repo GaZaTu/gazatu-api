@@ -4,6 +4,7 @@
   "description": "",
   "main": "dist/main.js",
   "scripts": {
+    "build": "tsc",
     "tsc-watch": "tsc --watch",
     "mongodb": "cd bin && mongod --dbpath data/db",
     "start": "node dist/main",
