@@ -20,7 +20,10 @@ mongoose.connect(mongodbUri, { useNewUrlParser: true })
 
 const app = new Koa()
 
-app.use(cors())
+app.use(cors({
+  origin: "*",
+  allowHeaders: ["Content-Type", "Authorization"],
+}))
 app.use(bodyparser({
   enableTypes: ["json"],
 }))
