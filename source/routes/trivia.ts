@@ -44,6 +44,8 @@ router.post("/trivia/questions", async ctx => {
 })
 
 router.post("/trivia/import-questions", async ctx => {
+  await Question.deleteMany({})
+
   await Question.create(ctx.request.body)
 })
 
