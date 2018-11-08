@@ -119,7 +119,3 @@ router.delete("/users/:id", async ctx => {
     user.remove()
   }
 })
-
-router.delete("/import-users", async ctx => {
-  await User.create(ctx.request.body)
-})

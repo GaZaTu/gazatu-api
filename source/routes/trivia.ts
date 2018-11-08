@@ -43,12 +43,6 @@ router.post("/trivia/questions", async ctx => {
   ctx.status = 201
 })
 
-router.post("/trivia/import-questions", async ctx => {
-  await Question.deleteMany({})
-
-  await Question.create(ctx.request.body)
-})
-
 router.get("/trivia/questions/:id", async ctx => {
   const question = await Question.findById(ctx.params.id).lean()
 
