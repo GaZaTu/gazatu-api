@@ -1,7 +1,7 @@
 import { Typegoose, prop, arrayProp, Ref, staticMethod } from "typegoose";
 
 export class PermissionSchema extends Typegoose {
-  @prop({ required: true, unique: true })
+  @prop({ required: true })
   name!: string
 }
 

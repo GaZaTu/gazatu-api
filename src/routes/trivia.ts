@@ -74,6 +74,8 @@ router.delete("/trivia/questions/:id", JWT, PERM("trivia"), async ctx => {
   await Question.deleteOne({ _id: ctx.params.id })
 
   await Report.deleteMany({ question: mongoose.Types.ObjectId(ctx.params.id) })
+
+  ctx.status = 204
 })
 
 router.get("/trivia/questions/:id/reports", JWT, PERM("trivia"), async ctx => {
@@ -82,6 +84,7 @@ router.get("/trivia/questions/:id/reports", JWT, PERM("trivia"), async ctx => {
   }
 
   ctx.body = await Report.find(conditions).sort({ createdAt: "desc" }).lean()
+  ctx.status = 200
 })
 
 router.post("/trivia/questions/:id/reports", async ctx => {
@@ -99,14 +102,17 @@ router.post("/trivia/questions/:id/reports", async ctx => {
 
 router.get("/trivia/categories", async ctx => {
   ctx.body = await Question.distinct("category").lean()
+  ctx.status = 200
 })
 
 router.get("/trivia/reports", JWT, PERM("trivia"), async ctx => {
   ctx.body = await Report.find(ctx.query).lean()
+  ctx.status = 200
 })
 
 router.get("/trivia/reported-questions", JWT, PERM("trivia"), async ctx => {
   ctx.body = await Question.find().where("_id").in(await Report.distinct("question")).lean()
+  ctx.status = 200
 })
 
 router.get("/trivia/statistics", async ctx => {
