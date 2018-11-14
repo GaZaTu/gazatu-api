@@ -1,7 +1,7 @@
 import { Typegoose, prop, Ref } from "typegoose";
-import { UserSchema } from "./auth.model";
+import { UserSchema } from "./user.model";
 
-class QuestionSchema extends Typegoose {
+export class QuestionSchema extends Typegoose {
   @prop({ required: true })
   question!: string
   @prop({ required: true })
@@ -25,7 +25,7 @@ class QuestionSchema extends Typegoose {
   updatedAt!: Date
 }
 
-class ReportSchema extends Typegoose {
+export class ReportSchema extends Typegoose {
   @prop({ required: true, index: true, ref: QuestionSchema })
   question!: Ref<QuestionSchema>
   @prop({ required: true })

@@ -1,6 +1,6 @@
 import { Typegoose, prop, arrayProp, Ref, staticMethod } from "typegoose";
 
-export class PermissionSchema extends Typegoose {
+export class UserPermissionSchema extends Typegoose {
   @prop({ required: true })
   name!: string
 }
@@ -10,8 +10,8 @@ export class UserSchema extends Typegoose {
   username!: string
   @prop({ required: true })
   password!: string
-  @arrayProp({ required: true, default: [], itemsRef: PermissionSchema })
-  permissions!: Ref<PermissionSchema>[]
+  @arrayProp({ required: true, default: [], itemsRef: UserPermissionSchema })
+  permissions!: Ref<UserPermissionSchema>[]
 
   @staticMethod
   static findWithoutPassword(conditions?: any, options?: any) {
@@ -19,5 +19,5 @@ export class UserSchema extends Typegoose {
   }
 }
 
-export const Permission = new PermissionSchema().getModelForClass(PermissionSchema)
+export const UserPermission = new UserPermissionSchema().getModelForClass(UserPermissionSchema)
 export const User = new UserSchema().getModelForClass(UserSchema)
