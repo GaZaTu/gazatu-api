@@ -1,18 +1,36 @@
 import { JsonController, Body, Post, BadRequestError, Action, HttpCode } from "routing-controllers";
-import * as koa from "koa";
-import * as koajwt from "koa-jwt";
 import * as bcrypt from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 import { User } from "../models/user.model";
 import { appConfig } from "../config";
-import { promisify } from "util";
+import { normalizeUser } from "./UserController";
 
 const {
   jwtSecret,
   masterUser,
 } = appConfig()
 
-const jwtVerify = promisify(jwt.verify)
+interface JwtUserData {
+  username: string
+  permissions: string[]
+  isMaster?: boolean
+}
+
+export function verifyJwt(token: string) {
+  return new Promise<JwtUserData>((resolve, reject) => {
+    jwt.verify(token, jwtSecret, (err, res) => {
+      err ? reject(err) : resolve(res as any)
+    })
+  })
+}
+
+export function signJwt(user: JwtUserData) {
+  return new Promise<string>((resolve, reject) => {
+    jwt.sign(user, jwtSecret, (err, res) => {
+      err ? reject(err) : resolve(res as any)
+    })
+  })
+}
 
 export function userHasPermissions(user: any, roles: string[]) {
   if (!user) {
@@ -39,14 +57,18 @@ export async function authorizationChecker(action: Action, roles: string[]) {
     return false
   }
 
-  const token = authorization.slice("Bearer ".length)
-  const parsedToken = await jwtVerify(token, jwtSecret)
+  try {
+    const token = authorization.slice("Bearer ".length)
+    const parsedToken = await verifyJwt(token)
 
-  if (parsedToken && typeof parsedToken === "object") {
-    const user = await User.findById((parsedToken as any)._id).populate("permissions").lean()
-    
-    return userHasPermissions(user, roles)
-  } else {
+    if (parsedToken && typeof parsedToken === "object") {
+      const user = await User.findById((parsedToken as any)._id).populate("permissions").lean()
+
+      return userHasPermissions(user, roles)
+    } else {
+      return false
+    }
+  } catch {
     return false
   }
 }
@@ -55,11 +77,15 @@ export async function currentUserChecker(action: Action) {
   const authorization = action.request.headers["authorization"]
 
   if (authorization) {
-    const token = authorization.slice("Bearer ".length)
-    const parsedToken = await jwtVerify(token, jwtSecret)
+    try {
+      const token = authorization.slice("Bearer ".length)
+      const parsedToken = await verifyJwt(token)
 
-    if (parsedToken && typeof parsedToken === "object") {
-      return await User.findById((parsedToken as any)._id)
+      if (parsedToken && typeof parsedToken === "object") {
+        return await User.findById((parsedToken as any)._id)
+      }
+    } catch {
+      return null
     }
   }
 
@@ -100,9 +126,7 @@ export class AuthController {
 
         delete user.password
 
-        user.permissions = user.permissions.map((perm: any) => perm.name)
-
-        const token = jwt.sign(user, jwtSecret)
+        const token = await signJwt(normalizeUser(user))
 
         return { user, token }
       }

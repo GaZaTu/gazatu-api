@@ -2,6 +2,32 @@ import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Authorized,
 import { User, UserPermission } from "../models/user.model";
 import { userHasPermissions } from "./AuthController";
 
+export function normalizeUser(user: any) {
+  if (user) {
+    user.permissions = user.permissions.map((perm: any) => perm.name)
+  }
+
+  return user
+}
+
+export async function denormalizeUser(user: any) {
+  const permissionIds = user.permissions.map(async (name: string) => {
+    let perm = await UserPermission.findOne({ name })
+
+    if (perm) {
+      return perm._id
+    } else {
+      let perm = await new UserPermission({ name }).save()
+
+      return perm._id
+    }
+  })
+
+  user.permissions = await Promise.all(permissionIds)
+
+  return user
+}
+
 @JsonController()
 export class UserController {
   @Authorized("users")
@@ -10,7 +36,7 @@ export class UserController {
     const users = await User.find(query).populate("permissions").lean()
 
     for (const user of users) {
-      user.permissions = user.permissions.map((perm: any) => perm.name)
+      normalizeUser(user)
     }
 
     return users
@@ -29,9 +55,7 @@ export class UserController {
       throw new NotFoundError()
     }
 
-    user.permissions = user.permissions.map((perm: any) => perm.name)
-
-    return user
+    return normalizeUser(user)
   }
 
   // @Post("/users")
@@ -72,7 +96,7 @@ export class UserController {
     const user = await User.findById(id).populate("permissions").lean()
 
     if (user) {
-      return user.permissions.map((perm: any) => perm.name)
+      return normalizeUser(user).permissions
     }
   }
 
@@ -83,19 +107,8 @@ export class UserController {
     const user = await User.findById(id)
 
     if (user) {
-      const permissionIds = permissions.map(async name => {
-        let perm = await UserPermission.findOne({ name })
-
-        if (perm) {
-          return perm._id
-        } else {
-          let perm = await new UserPermission({ name }).save()
-
-          return perm._id
-        }
-      })
-
-      await user.update({ permissions: await Promise.all(permissionIds) })
+      await denormalizeUser(user)
+      await user.update({ permissions: user.permissions })
     }
   }
 }

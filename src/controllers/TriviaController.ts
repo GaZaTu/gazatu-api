@@ -1,4 +1,4 @@
-import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Post, Authorized, OnUndefined, NotFoundError, HttpCode, QueryParam } from "routing-controllers";
+import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Post, Authorized, OnUndefined, NotFoundError, HttpCode, QueryParam, BadRequestError } from "routing-controllers";
 import * as mongoose from "mongoose";
 import { Question, Report } from "../models/trivia.model";
 
@@ -21,13 +21,13 @@ export class TriviaController {
   ) {
     const docQuery = Question.find()
 
-    if (!shuffled) {
+    if (!shuffled && shuffled !== undefined) {
       docQuery.sort({ createdAt: "desc" })
     }
 
     const questions = await docQuery.lean()
 
-    if (shuffled) {
+    if (shuffled || shuffled === undefined) {
       shuffle(questions)
     }
 
@@ -73,19 +73,26 @@ export class TriviaController {
   @Authorized("trivia")
   @Get("/trivia/questions/:id/reports")
   async getAllQuestionReports(@Param("id") id: string) {
+    const question = await Question.findById(id)
+
+    if (!question) {
+      throw new NotFoundError()
+    }
+
     return await Report.find({
       question: mongoose.Types.ObjectId(id),
     }).sort({ createdAt: "desc" }).lean()
   }
 
   @HttpCode(201)
-  @OnUndefined(400)
   @Post("/trivia/questions/:id/reports")
   async postQuestionReport(@Param("id") id: string, @Body() body: any) {
     const question = await Question.findById(id)
 
-    if (!question || question.verified) {
-      return
+    if (!question) {
+      throw new NotFoundError()
+    } else if (question.verified) {
+      throw new BadRequestError()
     }
 
     Object.assign(body, { question: id })
