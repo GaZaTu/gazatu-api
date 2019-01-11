@@ -121,6 +121,42 @@ describe("trivia route tests", () => {
     expect(differentCount).toBeGreaterThanOrEqual(9)
   })
 
+  test("GET /trivia/questions exclude", async () => {
+    const questions = [
+      await new Question({ question: "question1", answer: "answer1", category: "category1" }).save(),
+      await new Question({ question: "question2", answer: "answer2", category: "category2" }).save(),
+      await new Question({ question: "question3", answer: "answer3", category: "category3" }).save(),
+      await new Question({ question: "question4", answer: "answer4", category: "category4" }).save(),
+      await new Question({ question: "question5", answer: "answer5", category: "category5" }).save(),
+    ]
+
+    const response = await request(app.server).get("/trivia/questions?exclude=[category4]")
+
+    expect(response.status).toBe(200)
+    expect(response.type).toBe("application/json")
+    expect(Array.isArray(response.body)).toBe(true)
+    expect(response.body).toHaveLength(4)
+    expect(response.body.find((q: any) => q.category === "category4")).toBeUndefined()
+  })
+
+  test("GET /trivia/questions include", async () => {
+    const questions = [
+      await new Question({ question: "question1", answer: "answer1", category: "category1" }).save(),
+      await new Question({ question: "question2", answer: "answer2", category: "category2" }).save(),
+      await new Question({ question: "question3", answer: "answer3", category: "category3" }).save(),
+      await new Question({ question: "question4", answer: "answer4", category: "category4" }).save(),
+      await new Question({ question: "question5", answer: "answer5", category: "category5" }).save(),
+    ]
+
+    const response = await request(app.server).get("/trivia/questions?include=[category3,category4]")
+
+    expect(response.status).toBe(200)
+    expect(response.type).toBe("application/json")
+    expect(Array.isArray(response.body)).toBe(true)
+    expect(response.body).toHaveLength(2)
+    expect(response.body.find((q: any) => q.category === "category1")).toBeUndefined()
+  })
+
   test("GET /trivia/questions/:id existing", async () => {
     const question = await new Question({ question: "question1", answer: "answer1", category: "category1" }).save()
     const response = await request(app.server).get(`/trivia/questions/${question._id}`)

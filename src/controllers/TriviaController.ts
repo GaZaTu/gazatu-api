@@ -18,8 +18,18 @@ export class TriviaController {
   async getAll(
     @QueryParam("shuffled", { required: false }) shuffled?: boolean,
     @QueryParam("count", { required: false }) count?: number,
+    @QueryParam("exclude", { required: false }) exclude?: string,
+    @QueryParam("include", { required: false }) include?: string,
   ) {
-    const docQuery = Question.find()
+    const findConfig = {} as any
+
+    if (exclude) {
+      findConfig.category = { $nin: exclude.slice(1, -1).split(",") }
+    } else if (include) {
+      findConfig.category = { $in: include.slice(1, -1).split(",") }
+    }
+
+    const docQuery = Question.find(findConfig)
 
     if (!shuffled && shuffled !== undefined) {
       docQuery.sort({ createdAt: "desc" })
