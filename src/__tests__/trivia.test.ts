@@ -5,7 +5,7 @@ import { RestartableApp } from "../app";
 import { Question, Report } from "../models/trivia.model";
 import { User } from "../models/user.model";
 import { signJwt } from "../controllers/AuthController";
-import { normalizeUser, denormalizeUser } from "../controllers/UserController";
+import { normalizeUser, permissionStringsToIds } from "../controllers/UserController";
 
 const mockgoose = new Mockgoose(mongoose)
 const app = new RestartableApp()
@@ -35,7 +35,7 @@ beforeEach(async () => {
   user = await new User({ username: "test2", password: "test2" }).save()
   const userData = user.toObject()
   userData.permissions = ["trivia"]
-  await user.update({ permissions: (await denormalizeUser(userData)).permissions })
+  await user.update({ permissions: await permissionStringsToIds(userData.permissions) })
   user = (await User.findById(user._id))!
   token = await signJwt(normalizeUser(user.toObject()))
 

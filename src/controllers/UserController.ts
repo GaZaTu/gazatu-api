@@ -10,22 +10,20 @@ export function normalizeUser(user: any) {
   return user
 }
 
-export async function denormalizeUser(user: any) {
-  const permissionIds = user.permissions.map(async (name: string) => {
-    let perm = await UserPermission.findOne({ name })
+export function permissionStringsToIds(permissions: string[]) {
+  return Promise.all(
+    permissions.map(async (name: string) => {
+      let perm = await UserPermission.findOne({ name })
 
-    if (perm) {
-      return perm._id
-    } else {
-      let perm = await new UserPermission({ name }).save()
+      if (perm) {
+        return perm._id
+      } else {
+        let perm = await new UserPermission({ name }).save()
 
-      return perm._id
-    }
-  })
-
-  user.permissions = await Promise.all(permissionIds)
-
-  return user
+        return perm._id
+      }
+    })
+  )
 }
 
 @JsonController()
@@ -107,8 +105,9 @@ export class UserController {
     const user = await User.findById(id)
 
     if (user) {
-      await denormalizeUser(user)
-      await user.update({ permissions: user.permissions })
+      await user.update({
+        permissions: await permissionStringsToIds(permissions),
+      })
     }
   }
 }
