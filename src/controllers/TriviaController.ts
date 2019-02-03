@@ -130,31 +130,33 @@ export class TriviaController {
   @Get("/trivia/statistics")
   async getStatistics() {
     const questionCount = await Question.estimatedDocumentCount()
-    const categoryCount = await Question.distinct("category").estimatedDocumentCount()
-    const countOfQuestionsAddedThisMonth = await Question.aggregate([
-      {
-        $project: {
-          month: { $month: "$createdAt" },
-          week: { $week: "$createdAt" },
-        },
-      },
-      {
-        $match: {
-          month: new Date().getMonth(),
-        },
-      },
-      {
-        $count: "questionsAddedThisMonth",
-      },
-      // {
-      //   $match: {
-      //     week: new Date().get
-      //   },
-      // },
-      // {
-      //   $count: "questionsAddedThisWeek",
-      // },
-    ])
+    const categoryCount = (await Question.distinct("category")).length
+
+    // const countOfQuestionsAddedThisMonth = await Question.aggregate([
+    //   {
+    //     $project: {
+    //       month: { $month: "$createdAt" },
+    //       week: { $week: "$createdAt" },
+    //     },
+    //   },
+    //   {
+    //     $match: {
+    //       month: new Date().getMonth(),
+    //     },
+    //   },
+    //   {
+    //     $count: "questionsAddedThisMonth",
+    //   },
+    //   // {
+    //   //   $match: {
+    //   //     week: new Date().get
+    //   //   },
+    //   // },
+    //   // {
+    //   //   $count: "questionsAddedThisWeek",
+    //   // },
+    // ])
+
     const topCategories = await Question.aggregate([
       {
         $group: {
@@ -163,50 +165,58 @@ export class TriviaController {
         },
       },
       {
-        $limit: 3,
+        $project: {
+          _id: false,
+          category: "$_id.category",
+          submissions: "$count",
+        },
       },
-    ])
+    ]).sort({ submissions: "desc" }).limit(3)
+
     const topSubmitters = await Question.aggregate([
       {
         $group: {
-          _id: { category: "$submitter" },
+          _id: { submitter: "$submitter" },
           count: { $sum: 1 },
         },
       },
       {
-        $sort: {
-          count: "desc",
+        $project: {
+          _id: false,
+          submitter: "$_id.submitter",
+          submissions: "$count",
         },
       },
-      {
-        $limit: 3,
-      },
-    ])
-    const dailyQuestions = await Question.aggregate([
+    ]).sort({ submissions: "desc" }).limit(3)
+
+    const submissionDates = await Question.aggregate([
       {
         $match: {
-          createdAt: { $gte: new Date().setFullYear(new Date().getFullYear() - 1) },
+          createdAt: {
+            $gte: (() => {
+              const date = new Date()
+              date.setFullYear(date.getFullYear() - 1)
+
+              return date
+            })(),
+          },
         },
       },
       {
-        $group: {
-          _id: { createdAt: "$createdAt" },
+        $project: {
+          _id: false,
+          createdAt: "$createdAt",
         },
       },
-      {
-        $sort: {
-          date: "asc",
-        },
-      },
-    ])
+    ]).sort({ createdAt: "asc" })
 
     return {
       questionCount,
       categoryCount,
-      countOfQuestionsAddedThisMonth,
+      // countOfQuestionsAddedThisMonth,
       topCategories,
       topSubmitters,
-      dailyQuestions,
+      submissionDates,
     }
   }
 }
