@@ -1,5 +1,6 @@
 node_modules/
 dist/
 bin/
-config.json
 coverage/
+ecosystem.config.js
+config.json

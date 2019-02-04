@@ -11,9 +11,12 @@
     "dev": "node ./node_modules/nodemon/bin/nodemon.js",
     "test": "jest --watchAll"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GaZaTu/gazatu-api"
+  },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
     "@types/jest": "^23.3.9",
