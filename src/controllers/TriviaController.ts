@@ -20,6 +20,8 @@ export class TriviaController {
     @QueryParam("count", { required: false }) count?: number,
     @QueryParam("exclude", { required: false }) exclude?: string,
     @QueryParam("include", { required: false }) include?: string,
+    @QueryParam("verified", { required: false }) verified?: boolean,
+    @QueryParam("disabled", { required: false }) disabled = false,
   ) {
     const findConfig = {} as any
 
@@ -27,6 +29,14 @@ export class TriviaController {
       findConfig.category = { $nin: exclude.slice(1, -1).split(",") }
     } else if (include) {
       findConfig.category = { $in: include.slice(1, -1).split(",") }
+    }
+
+    if (verified !== undefined) {
+      findConfig.verified = verified
+    }
+
+    if (disabled !== undefined) {
+      findConfig.disabled = disabled
     }
 
     const docQuery = Question.find(findConfig)
