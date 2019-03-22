@@ -141,6 +141,7 @@ export class TriviaController {
   async getStatistics() {
     const questionCount = await Question.estimatedDocumentCount()
     const categoryCount = (await Question.distinct("category")).length
+    const verifiedQuestionCount = await Question.find({ verified: true }).count()
 
     // const countOfQuestionsAddedThisMonth = await Question.aggregate([
     //   {
@@ -222,11 +223,58 @@ export class TriviaController {
 
     return {
       questionCount,
+      verifiedQuestionCount,
       categoryCount,
       // countOfQuestionsAddedThisMonth,
       topCategories,
       topSubmitters,
       submissionDates,
+    }
+  }
+
+  @Get("/trivia/question-count")
+  async getQuestionCount(
+    @QueryParam("exclude", { required: false }) exclude?: string,
+    @QueryParam("include", { required: false }) include?: string,
+    @QueryParam("verified", { required: false }) verified?: boolean,
+    @QueryParam("disabled", { required: false }) disabled = false,
+  ) {
+    const findConfig = {} as any
+
+    if (exclude) {
+      findConfig.category = { $nin: exclude.slice(1, -1).split(",") }
+    } else if (include) {
+      findConfig.category = { $in: include.slice(1, -1).split(",") }
+    }
+
+    if (verified !== undefined) {
+      findConfig.verified = verified
+    }
+
+    if (disabled !== undefined) {
+      findConfig.disabled = disabled
+    }
+
+    return {
+      count: await Question.count(findConfig),
+    }
+  }
+
+  @Authorized("trivia")
+  @Get("/trivia/report-count")
+  async getReportCount() {
+    return {
+      count: await Report.count({}),
+    }
+  }
+
+  @Authorized("trivia")
+  @Get("/trivia/reported-question-count")
+  async getReportedQuestionCount() {
+    return {
+      count: await Question.count({
+        _id: { $in: await Report.distinct("question") },
+      }),
     }
   }
 }
