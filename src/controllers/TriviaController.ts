@@ -1,4 +1,4 @@
-import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Post, Authorized, OnUndefined, NotFoundError, HttpCode, QueryParam, BadRequestError } from "routing-controllers";
+import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Post, Authorized, OnUndefined, NotFoundError, HttpCode, QueryParam } from "routing-controllers";
 import * as mongoose from "mongoose";
 import { Question, Report } from "../models/trivia.model";
 
@@ -111,8 +111,6 @@ export class TriviaController {
 
     if (!question) {
       throw new NotFoundError()
-    } else if (question.verified) {
-      throw new BadRequestError()
     }
 
     Object.assign(body, { question: id })

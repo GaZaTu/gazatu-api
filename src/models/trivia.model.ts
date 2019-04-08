@@ -4,9 +4,9 @@ import { UserSchema } from "./user.model";
 export class QuestionSchema extends Typegoose {
   @prop({ required: true })
   question!: string
-  @prop({ required: true })
+  @prop({ required: true, trim: true })
   answer!: string
-  @prop({ required: true, index: true })
+  @prop({ required: true, index: true, trim: true })
   category!: string
   @prop()
   hint1?: string
