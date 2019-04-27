@@ -1,6 +1,7 @@
 import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Authorized, OnUndefined, NotFoundError, CurrentUser, UnauthorizedError } from "routing-controllers";
 import { User, UserPermission } from "../models/user.model";
 import { userHasPermissions } from "./AuthController";
+import "reflect-metadata";
 
 export function normalizeUser(user: any) {
   if (user) {

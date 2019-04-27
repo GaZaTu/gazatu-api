@@ -1,4 +1,3 @@
-import * as path from "path";
 import { readFileSync } from "fs";
 
 interface AppConfigInput {
@@ -29,7 +28,7 @@ interface AppConfig {
   }
 }
 
-const configPath = path.join(__dirname, "/../config.json")
+const configPath = `${__dirname}/../config.json`
 let config: AppConfig | null = null
 
 export function appConfig() {

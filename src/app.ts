@@ -2,10 +2,11 @@ import * as http from "http";
 import * as http2 from "http2"; // is basically https
 import * as Koa from "koa";
 import * as cors from "@koa/cors";
+import * as jsonError from "koa-json-error";
 import * as logger from "koa-logger";
 import * as routing from "routing-controllers";
 import { appConfig } from "./config";
-import { authorizationChecker, currentUserChecker } from "./controllers/AuthController";
+import { routingControllersConfig } from "./routingControllersConfig";
 
 const {
   production,
@@ -25,24 +26,21 @@ export class RestartableApp {
       allowHeaders: ["Content-Type", "Authorization"],
     }))
 
+    app.use(jsonError({
+      format: (err: any, obj: any) => ({
+        name: err.name,
+        message: err.message,
+        type: err.type,
+        status: err.status,
+        stack: production ? undefined : err.stack,
+      }),
+    }))
+
     if (useLogger && !production) {
       app.use(logger())
     }
 
-    return routing.useKoaServer(app, {
-      development: !production,
-      controllers: [__dirname + "/controllers/**/*.[jt]s"],
-      defaults: {
-        nullResultCode: 404,
-        undefinedResultCode: 404,
-        paramOptions: {
-          required: true,
-        },
-      },
-      classTransformer: false,
-      authorizationChecker,
-      currentUserChecker,
-    })
+    return routing.useKoaServer(app, routingControllersConfig)
   }
 
   listen(useLogger = true) {
@@ -64,7 +62,7 @@ export class RestartableApp {
 
   close() {
     return new Promise<void>(resolve => {
-      this.server.close(resolve)
+      this.server.close(resolve as any)
     })
   }
 }

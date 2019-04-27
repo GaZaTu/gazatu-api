@@ -10,7 +10,7 @@ export class UserSchema extends Typegoose {
   username!: string
   @prop({ required: true })
   password!: string
-  @arrayProp({ required: true, default: [], itemsRef: UserPermissionSchema })
+  @arrayProp({ itemsRef: UserPermissionSchema, required: true, default: [] })
   permissions!: Ref<UserPermissionSchema>[]
 
   @staticMethod

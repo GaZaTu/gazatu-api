@@ -1,6 +1,8 @@
 import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Post, Authorized, OnUndefined, NotFoundError, HttpCode, QueryParam } from "routing-controllers";
 import * as mongoose from "mongoose";
 import { Question, Report } from "../models/trivia.model";
+// import { Language } from "../models/meta.model";
+import "reflect-metadata";
 
 function shuffle<T>(a: T[]): T[] {
   for (let i = a.length - 1; i > 0; i--) {
@@ -22,6 +24,7 @@ export class TriviaController {
     @QueryParam("include", { required: false }) include?: string,
     @QueryParam("verified", { required: false }) verified?: boolean,
     @QueryParam("disabled", { required: false }) disabled = false,
+    // @QueryParam("language", { required: false }) language = 'en',
   ) {
     const findConfig = {} as any
 
@@ -62,6 +65,8 @@ export class TriviaController {
   @HttpCode(201)
   @Post("/trivia/questions")
   async post(@Body() body: any) {
+    // body.language = body.language || (await Language.findByCode('en'))!._id
+
     return await new Question(body).save()
   }
 

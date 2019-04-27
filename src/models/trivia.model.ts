@@ -1,5 +1,6 @@
 import { Typegoose, prop, Ref } from "typegoose";
 import { UserSchema } from "./user.model";
+// import { LanguageSchema } from "./meta.model";
 
 export class QuestionSchema extends Typegoose {
   @prop({ required: true })
@@ -8,6 +9,8 @@ export class QuestionSchema extends Typegoose {
   answer!: string
   @prop({ required: true, index: true, trim: true })
   category!: string
+  // @prop({ ref: LanguageSchema, required: true, index: true })
+  // language!: Ref<LanguageSchema>
   @prop()
   hint1?: string
   @prop()
@@ -26,7 +29,7 @@ export class QuestionSchema extends Typegoose {
 }
 
 export class ReportSchema extends Typegoose {
-  @prop({ required: true, index: true, ref: QuestionSchema })
+  @prop({ ref: QuestionSchema, required: true, index: true })
   question!: Ref<QuestionSchema>
   @prop({ required: true })
   message!: string

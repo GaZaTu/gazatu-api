@@ -4,6 +4,7 @@ import * as jwt from "jsonwebtoken";
 import { User } from "../models/user.model";
 import { appConfig } from "../config";
 import { normalizeUser } from "./UserController";
+import "reflect-metadata";
 
 const {
   jwtSecret,
