@@ -7,6 +7,7 @@ import * as logger from "koa-logger";
 import * as routing from "routing-controllers";
 import { appConfig } from "./config";
 import { routingControllersConfig } from "./routingControllersConfig";
+import { updateDatabaseRevision } from "./models/updates";
 
 const {
   production,
@@ -46,6 +47,8 @@ export class RestartableApp {
   listen(useLogger = true) {
     const app = this.setupKoa(useLogger)
     const handler = app.callback()
+
+    updateDatabaseRevision()
 
     return new Promise<void>(resolve => {
       if (production && httpsConfig) {

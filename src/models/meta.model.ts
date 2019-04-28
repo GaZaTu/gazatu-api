@@ -26,11 +26,11 @@ export class MetaInfoSchema extends Typegoose {
   @staticMethod
   static async getDatabaseRevision(this: ModelType<MetaInfoSchema> & typeof MetaInfoSchema) {
     const revisionEntry = await this.findByKey('dbRevision')
-    
+
     if (revisionEntry) {
       return revisionEntry.value as number
     } else {
-      return 1
+      return 0
     }
   }
 

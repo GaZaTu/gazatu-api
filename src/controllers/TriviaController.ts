@@ -1,7 +1,7 @@
-import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Post, Authorized, OnUndefined, NotFoundError, HttpCode, QueryParam } from "routing-controllers";
+import { JsonController, Param, Body, Get, Put, Delete, QueryParams, Post, Authorized, OnUndefined, NotFoundError, HttpCode, QueryParam, BadRequestError } from "routing-controllers";
 import * as mongoose from "mongoose";
 import { Question, Report } from "../models/trivia.model";
-// import { Language } from "../models/meta.model";
+import { Language } from "../models/meta.model";
 import "reflect-metadata";
 
 function shuffle<T>(a: T[]): T[] {
@@ -23,8 +23,8 @@ export class TriviaController {
     @QueryParam("exclude", { required: false }) exclude?: string,
     @QueryParam("include", { required: false }) include?: string,
     @QueryParam("verified", { required: false }) verified?: boolean,
-    @QueryParam("disabled", { required: false }) disabled = false,
-    // @QueryParam("language", { required: false }) language = 'en',
+    @QueryParam("disabled", { required: false }) disabled: boolean = false,
+    @QueryParam("includeLanguages", { required: false }) includeLanguages: string = "[en]",
   ) {
     const findConfig = {} as any
 
@@ -40,6 +40,10 @@ export class TriviaController {
 
     if (disabled !== undefined) {
       findConfig.disabled = disabled
+    }
+
+    if (includeLanguages) {
+      findConfig.language = { $in: includeLanguages.slice(1, -1).split(",") }
     }
 
     const docQuery = Question.find(findConfig)
@@ -62,11 +66,19 @@ export class TriviaController {
     return await Question.findById(id).lean()
   }
 
+  async validateLanguageInLeanQuestion(body: any) {
+    const languageCode = body.language = body.language || 'en'
+    const language = await Language.findByCode(languageCode)
+
+    if (!language) {
+      throw new BadRequestError("Invalid language")
+    }
+  }
+
   @HttpCode(201)
   @Post("/trivia/questions")
   async post(@Body() body: any) {
-    // body.language = body.language || (await Language.findByCode('en'))!._id
-
+    await this.validateLanguageInLeanQuestion(body)
     return await new Question(body).save()
   }
 
@@ -77,6 +89,8 @@ export class TriviaController {
     const question = await Question.findById(id)
 
     if (question) {
+      await this.validateLanguageInLeanQuestion(body)
+
       if (body.verified && !question.verified) {
         await Report.deleteMany({ question: mongoose.Types.ObjectId(id) })
       }
