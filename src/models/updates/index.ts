@@ -1,18 +1,16 @@
 import { MetaInfo } from "../meta.model";
 
-import rev1 from "./rev1";
-import rev2 from "./rev2";
-
 const revisions = [
-  rev1,
-  rev2,
+  import("./rev1"),
+  import("./rev2"),
+  import("./rev3"),
 ]
 
 export async function updateDatabaseRevision() {
-  for (const rev of revisions) {
-    if (await MetaInfo.getDatabaseRevision() === (rev.rev - 1)) {
+  for (const rev of await Promise.all(revisions)) {
+    if (await MetaInfo.getDatabaseRevision() === (rev.default.rev - 1)) {
       await MetaInfo.incrementDatabaseRevision()
-      await rev.code()
+      await rev.default.code()
     }
   }
 }
